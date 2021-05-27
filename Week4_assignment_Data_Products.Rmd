@@ -1,0 +1,112 @@
+---
+title: "Week4_assignment_Data_Prodcuts"
+author: "Tommaso Ancilli"
+date: "5/27/2021"
+output:
+  ioslides_presentation: default
+  slidy_presentation: default
+---
+
+## Week 4 Assignment 
+
+author: Tommaso Ancilli
+
+Title of the presentation: Week 4 assignment: Create a shiny applications
+
+Date: 25th May, 2021
+
+## Overall Information
+
+The aim of this app is to predict how much miles you are going to do per gallon. The model prediction is based on a generalized linear model, being more precise, it use a poisson model. You can see how modify each parameter you will get a different value of MPG. 
+It is very intuitive, indeed you can manipulate the different values and then when you press the button submit, the app gives you the prediction result. 
+
+## Code exemple
+
+```{r}
+library(caret)
+car <- mtcars
+
+fit_mod <- glm(mpg ~.,data=car,family="poisson")
+new_data <- as.data.frame(t(c("cyl"=8,"disp"=180,"hp"=500,"drat"=3.9,"wt"=10,"qsec"=18.9,"vs"=1,"am"=1,"gear"=7,"carb"=8)))
+predict(fit_mod,newdata = new_data)
+
+```
+##  The UI code
+
+```{r,echo=T,eval=F}
+library(shiny)
+library(caret)
+library(plotly)
+
+shinyUI(fluidPage(
+
+    titlePanel("MPG prediction given all the others information"),
+    
+    sidebarLayout(
+        sidebarPanel(
+            h3("Here you can change all the parameters in order to predict how much MPG ( miles per gallon) your veichle will do!"),
+            sliderInput("sliderCYL","Number cylinders:",min = 2, max = 14, value = 4),
+            sliderInput("sliderDISP","Displacement (inch):",min = 50, max = 500, value = 200),
+            sliderInput("sliderHP","Number of break Horsepower:",min = 50, max = 800, value = 150),
+            sliderInput("sliderDRAT","Rear axle ratio:",min = 2.50, max = 7, value = 3.254),
+            sliderInput("sliderWT","Weight of the car(1000 lbs):",min = 1, max = 10, value = 3.516),
+            sliderInput("sliderQSEC","1/4 mile time:",min = 10.00, max = 30.00, value = 19.512),
+            checkboxInput("showENGINE","Show=Straitght Engine/Hide= v-shape engine",value=T),
+            checkboxInput("showTRANS","Show=manual transmission/Hide= automatic transmission",value=T),
+            sliderInput("sliderGEAR","Number of foward gears:",min = 4, max = 10, value = 6),
+            sliderInput("sliderCARB","Number of carburators:",min = 2, max = 10, value = 6),
+            submitButton("Submit")
+        ),
+
+        mainPanel(
+            h1("Here there is the plot which link some carateristics of the vehicles."),
+            plotlyOutput("PlotMPG"),
+            h1("The prediction of the total miles that your vehicles will do with a gallon is:
+               
+               "),
+            h3(textOutput("modelpred"))
+        )
+    )
+))
+
+```
+
+## The Server Code
+
+```{r,echo=T,eval=F}
+library(shiny)
+library(caret)
+library(plotly)
+
+shinyServer(function(input, output,session) {
+
+    output$PlotMPG <- renderPlotly({
+        plot_ly(data=mtcars,x=~mpg,y=~hp,z=~disp,mode="lines+markers",color=~as.factor(cyl),type="scatter3d",size=~wt)
+
+         })
+
+    fit_mod <- glm(mpg ~.,data=mtcars,family="poisson")    
+    
+    modpred <- reactive({
+    cyl <- input$sliderCYL
+    disp <- input$sliderDISP
+    hp <- input$sliderHP
+    drat <- input$sliderDRAT
+    wt <- input$sliderWT
+    qsec <- input$sliderQSEC
+    gear <- input$sliderGEAR
+    carb <- input$sliderCARB
+    vs <- ifelse(input$showENGINE,1,0)
+    am <- ifelse(input$showTRANS,1,0)
+    new_data <- as.data.frame(t(c("cyl"=cyl,"disp"=disp,"hp"=hp,"drat"=drat,"wt"=wt,"qsec"=qsec,"vs"=vs,"am"=am,"gear"=gear,"carb"=carb)))
+        predict(fit_mod,newdata = new_data)
+    })
+    
+    
+    output$modelpred <- renderText({
+        modpred()
+    })
+    
+})
+```
+
